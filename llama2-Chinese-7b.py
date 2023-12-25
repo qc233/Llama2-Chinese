@@ -2,7 +2,8 @@ import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from peft import PeftModel, PeftConfig
 
-model_path = './dataroot/FlagAlpha/Llama2-Chinese-7b-Chat'
+# model_path = './dataroot/FlagAlpha/Llama2-Chinese-7b-Chat'
+model_path = 'FlagAlpha/Llama2-Chinese-7b-Chat'
 
 # 例如: finetune_model_path='FlagAlpha/Llama2-Chinese-7b-Chat-LoRA'
 finetune_model_path = model_path
