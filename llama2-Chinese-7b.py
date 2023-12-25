@@ -1,21 +1,12 @@
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
-from peft import PeftModel, PeftConfig
 
-# model_path = './dataroot/FlagAlpha/Llama2-Chinese-7b-Chat'
-model_path = 'FlagAlpha/Llama2-Chinese-7b-Chat'
-
-# 例如: finetune_model_path='FlagAlpha/Llama2-Chinese-7b-Chat-LoRA'
-finetune_model_path = model_path
-config = PeftConfig.from_pretrained(finetune_model_path)
-# 例如: base_model_name_or_path='meta-llama/Llama-2-7b-chat'
-tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
-tokenizer.pad_token = tokenizer.eos_token
-model = AutoModelForCausalLM.from_pretrained(model_path, device_map='cuda:0',
-                                             torch_dtype=torch.float16, load_in_8bit=True)
-model = PeftModel.from_pretrained(model, finetune_model_path, device_map={"": 0})
+model = AutoModelForCausalLM.from_pretrained('FlagAlpha/Atom-7B', device_map='auto', torch_dtype=torch.float16,
+                                             load_in_8bit=True)
 model = model.eval()
-input_ids = tokenizer(['<s>Human: 介绍一下北京\n</s><s>Assistant: '], return_tensors="pt",
+tokenizer = AutoTokenizer.from_pretrained('FlagAlpha/Atom-7B', use_fast=False)
+tokenizer.pad_token = tokenizer.eos_token
+input_ids = tokenizer(['<s>Human: 介绍一下中国\n</s><s>Assistant: '], return_tensors="pt",
                       add_special_tokens=False).input_ids.to('cuda')
 generate_input = {
     "input_ids": input_ids,
