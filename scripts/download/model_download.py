@@ -211,7 +211,7 @@ if __name__ == '__main__':
     # --mirror为从aliendao.cn镜像下载，如果aliendao.cn没有镜像，则会转到hf
     # 默认为True
     parser.add_argument('--mirror', action='store_true',
-                        default=True, required=False)
+                        default=False, required=False)
     parser.add_argument('--token', default="", type=str, required=False)
     # --e为企业付费版
     parser.add_argument('--e', action='store_true',
