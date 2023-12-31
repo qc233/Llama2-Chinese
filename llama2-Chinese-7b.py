@@ -1,12 +1,9 @@
-import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoTokenizer
+from auto_gptq import AutoGPTQForCausalLM
 
-model = AutoModelForCausalLM.from_pretrained('FlagAlpha/Atom-7B', device_map='auto', torch_dtype=torch.float16,
-                                             load_in_8bit=True)
-model = model.eval()
-tokenizer = AutoTokenizer.from_pretrained('FlagAlpha/Atom-7B', use_fast=False)
-tokenizer.pad_token = tokenizer.eos_token
-input_ids = tokenizer(['<s>Human: 介绍一下中国\n</s><s>Assistant: '], return_tensors="pt",
+model = AutoGPTQForCausalLM.from_quantized('FlagAlpha/Llama2-Chinese-13b-Chat-4bit', device="cuda:0")
+tokenizer = AutoTokenizer.from_pretrained('FlagAlpha/Llama2-Chinese-13b-Chat-4bit', use_fast=False)
+input_ids = tokenizer(['<s>Human: 怎么登上火星\n</s><s>Assistant: '], return_tensors="pt",
                       add_special_tokens=False).input_ids.to('cuda')
 generate_input = {
     "input_ids": input_ids,

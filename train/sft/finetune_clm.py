@@ -28,7 +28,7 @@ import random
 from dataclasses import dataclass, field
 from itertools import chain
 import deepspeed
-from typing import Optional,List,Union
+from typing import Optional, List, Union
 
 import datasets
 import evaluate
@@ -69,14 +69,12 @@ from transformers.utils.versions import require_version
 
 import pdb
 
-
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
 # check_min_version("4.27.0.dev0")
 
 require_version("datasets>=1.8.0", "To fix: pip install -r examples/pytorch/language-modeling/requirements.txt")
 
 logger = logging.getLogger(__name__)
-
 
 MODEL_CONFIG_CLASSES = list(MODEL_FOR_CAUSAL_LM_MAPPING.keys())
 MODEL_TYPES = tuple(conf.model_type for conf in MODEL_CONFIG_CLASSES)
@@ -136,7 +134,7 @@ class ModelArguments:
             )
         },
     )
-    
+
     torch_dtype: Optional[str] = field(
         default=None,
         metadata={
@@ -153,7 +151,6 @@ class ModelArguments:
             raise ValueError(
                 "--config_overrides can't be used in combination with --config_name or --model_name_or_path"
             )
-        
 
 
 @dataclass
@@ -170,8 +167,9 @@ class DataTrainingArguments:
     dataset_config_name: Optional[str] = field(
         default=None, metadata={"help": "The configuration name of the dataset to use (via the datasets library)."}
     )
-    train_files: Optional[List[str]]  = field(default=None, metadata={"help": "The input training data file (a text file)."})
-    validation_files: Optional[List[str]]  = field(
+    train_files: Optional[List[str]] = field(default=None,
+                                             metadata={"help": "The input training data file (a text file)."})
+    validation_files: Optional[List[str]] = field(
         default=None,
         metadata={"help": "An optional input evaluation data file to evaluate the perplexity on (a text file)."},
     )
@@ -234,7 +232,8 @@ class DataTrainingArguments:
             if self.validation_files is not None:
                 extension = self.validation_files[0].split(".")[-1]
                 assert extension in ["csv", "json", "txt"], "`validation_file` should be a csv, a json or a txt file."
-                
+
+
 def main():
     # See all possible arguments in src/transformers/training_args.py
     # or by passing the --help flag to this script.
@@ -323,7 +322,7 @@ def main():
         raw_datasets = load_dataset(
             extension,
             data_files=data_files,
-            cache_dir=os.path.join(training_args.output_dir,'dataset_cache'),
+            cache_dir=os.path.join(training_args.output_dir, 'dataset_cache'),
             use_auth_token=True if model_args.use_auth_token else None,
             **dataset_args,
         )
@@ -377,7 +376,7 @@ def main():
         "use_fast": model_args.use_fast_tokenizer,
         "revision": model_args.model_revision,
         "use_auth_token": True if model_args.use_auth_token else None,
-        "padding_side":'left'
+        "padding_side": 'left'
     }
     if model_args.tokenizer_name:
         tokenizer = AutoTokenizer.from_pretrained(model_args.tokenizer_name, **tokenizer_kwargs)
@@ -408,72 +407,71 @@ def main():
             device_map={"": int(os.environ.get("LOCAL_RANK") or 0)}
         )
         # model = prepare_model_for_int8_training(model, output_embedding_layer_name="embed_out", layer_norm_names=[])
-        
+
     else:
         model = AutoModelForCausalLM.from_config(config)
         n_params = sum({p.data_ptr(): p.numel() for p in model.parameters()}.values())
-        logger.info(f"Training new model from scratch - Total size={n_params/2**20:.2f}M params")
+        logger.info(f"Training new model from scratch - Total size={n_params / 2 ** 20:.2f}M params")
 
     # We resize the embeddings only when necessary to avoid index errors. If you are creating a model from scratch
     # on a small vocab and want a smaller embedding size, remove this test.
     embedding_size = model.get_input_embeddings().weight.shape[0]
     if len(tokenizer) > embedding_size:
         model.resize_token_embeddings(len(tokenizer))
-    
+
     # Preprocessing the datasets.
     # First we tokenize all the texts.
     if training_args.do_train:
         column_names = list(raw_datasets["train"].features)
     else:
         column_names = list(raw_datasets["validation"].features)
-        
+
     train_on_inputs = True
-    if len(column_names)==1:
+    if len(column_names) == 1:
         text_column_name = "text" if "text" in column_names else column_names[0]
-    elif len(column_names)==2:
+    elif len(column_names) == 2:
         input_column_name = 'input' if 'input' in column_names else column_names[0]
         target_column_name = 'target' if 'target' in column_names else column_names[0]
-        train_on_inputs=False
+        train_on_inputs = False
     else:
         raise ValueError('输入文件列数不对')
-    print('train_on_inputs',train_on_inputs)
+    print('train_on_inputs', train_on_inputs)
     # since this will be pickled to avoid _LazyModule error in Hasher force logger loading before tokenize_function
     tok_logger = transformers.utils.logging.get_logger("transformers.tokenization_utils_base")
 
     def tokenize_function(examples):
         with CaptureLogger(tok_logger) as cl:
-            output = tokenizer([ item for item in examples[text_column_name]],truncation=True,max_length=data_args.block_size,padding=False,return_tensors=None)
+            output = tokenizer([item for item in examples[text_column_name]], truncation=True,
+                               max_length=data_args.block_size, padding=False, return_tensors=None)
             output['labels'] = output['input_ids'].copy()
         return output
 
     def tokenize(prompt):
-        result = tokenizer(prompt,truncation=True,max_length=data_args.block_size,padding=False,return_tensors=None)
+        result = tokenizer(prompt, truncation=True, max_length=data_args.block_size, padding=False, return_tensors=None)
         result["labels"] = result["input_ids"].copy()
         return result
 
     def generate_and_tokenize_prompt(data_point):
         input_text = data_point[input_column_name]
         target_text = data_point[target_column_name]
-        full_prompt = input_text+target_text
+        full_prompt = input_text + target_text
         tokenized_full_prompt = tokenize(full_prompt)
         if not train_on_inputs:
             user_prompt = input_text
             tokenized_user_prompt = tokenize(user_prompt)
             user_prompt_len = len(tokenized_user_prompt["input_ids"])
             tokenized_full_prompt["labels"] = [
-                -100
-            ] * user_prompt_len + tokenized_full_prompt["labels"][
-                user_prompt_len:
-            ] 
+                                                  -100
+                                              ] * user_prompt_len + tokenized_full_prompt["labels"][
+                                                                    user_prompt_len:
+                                                                    ]
         return tokenized_full_prompt
-    
-    
-    
+
     with training_args.main_process_first(desc="dataset map tokenization"):
         if not data_args.streaming:
             tokenized_datasets = raw_datasets.map(
-                tokenize_function if train_on_inputs==True else generate_and_tokenize_prompt,
-                batched=True if train_on_inputs==True else False,
+                tokenize_function if train_on_inputs == True else generate_and_tokenize_prompt,
+                batched=True if train_on_inputs == True else False,
                 num_proc=data_args.preprocessing_num_workers,
                 remove_columns=column_names,
                 load_from_cache_file=not data_args.overwrite_cache,
@@ -481,8 +479,8 @@ def main():
             )
         else:
             tokenized_datasets = raw_datasets.map(
-                tokenize_function if train_on_inputs==True else generate_and_tokenize_prompt,
-                batched=True if train_on_inputs==True else False,
+                tokenize_function if train_on_inputs == True else generate_and_tokenize_prompt,
+                batched=True if train_on_inputs == True else False,
                 remove_columns=column_names,
             )
 
@@ -554,7 +552,7 @@ def main():
             tokenizer, pad_to_multiple_of=8, return_tensors="pt", padding=True
         ),
         compute_metrics=compute_metrics if training_args.do_eval and not is_torch_tpu_available() else None,
-        preprocess_logits_for_metrics=preprocess_logits_for_metrics if training_args.do_eval and not is_torch_tpu_available()else None,
+        preprocess_logits_for_metrics=preprocess_logits_for_metrics if training_args.do_eval and not is_torch_tpu_available() else None,
     )
 
     # Training
@@ -565,11 +563,11 @@ def main():
         elif last_checkpoint is not None:
             checkpoint = last_checkpoint
 
-        print(training_args.local_rank,'start train')
-        
+        print(training_args.local_rank, 'start train')
+
         if torch.__version__ >= "2" and sys.platform != "win32":
             model = torch.compile(model)
-        
+
         train_result = trainer.train(resume_from_checkpoint=checkpoint)
         trainer.save_model()  # Saves the tokenizer too for easy upload
 
@@ -600,7 +598,6 @@ def main():
 
         trainer.log_metrics("eval", metrics)
         trainer.save_metrics("eval", metrics)
-
 
 
 def _mp_fn(index):

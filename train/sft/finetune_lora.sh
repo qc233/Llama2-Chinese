@@ -4,12 +4,10 @@ if [ ! -d ${output_model} ];then
     mkdir ${output_model}
 fi
 cp ./finetune.sh ${output_model}
-deepspeed --include localhost:1,0 --num_gpus 2  finetune_clm_lora.py \
-    --model_name_or_path meta-llama/Llama-2-7b-chat-hf \
+deepspeed --include localhost:0 finetune_clm_lora.py \
+    --model_name_or_path FlagAlpha/Llama2-Chinese-13b-Chat \
     --train_files ../../data/train_sft.csv \
-                ../../data/train_sft_sharegpt.csv \
     --validation_files  ../../data/dev_sft.csv \
-                         ../../data/dev_sft_sharegpt.csv \
     --per_device_train_batch_size 1 \
     --per_device_eval_batch_size 1 \
     --do_train \
@@ -42,9 +40,8 @@ deepspeed --include localhost:1,0 --num_gpus 2  finetune_clm_lora.py \
     --overwrite_output_dir \
     --deepspeed ds_config_zero2.json \
     --ignore_data_skip true \
-    --bf16 \
+    --fp16 true\
     --gradient_checkpointing \
-    --bf16_full_eval \
     --ddp_timeout 18000000 \
     | tee -a ${output_model}/train.log
     
