@@ -10,8 +10,8 @@ deepspeed --include localhost:0 finetune_clm_lora.py \
     --validation_files  ../../data/dev_sft.csv \
     --per_device_train_batch_size 1 \
     --per_device_eval_batch_size 1 \
-    --do_train \
-    --do_eval \
+    --do_train true \
+    --do_eval true\
     --use_fast_tokenizer false \
     --output_dir ${output_model} \
     --evaluation_strategy  steps \
